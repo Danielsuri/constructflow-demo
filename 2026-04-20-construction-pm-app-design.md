@@ -277,7 +277,7 @@ Filtering shows only cards matching the selected type.
 
 ---
 
-## 15. Cost Leak Tracking — Two Views
+## 14. Cost Leak Tracking — Two Views
 
 | View | Where | What it shows |
 |------|-------|---------------|
@@ -297,7 +297,38 @@ Filtering shows only cards matching the selected type.
 
 ---
 
-## 17. Out of Scope (for this prototype)
+## 17. Quick Wins (next features to add)
+
+Small additions that fit naturally into the existing screens, high value relative to effort.
+
+| # | Feature | Where | What it does |
+|---|---------|-------|--------------|
+| 1 | **Daily EOD Report** | Dashboard | "Generate Report" button → modal summarizing tasks completed, photos received, cost alerts, and admin visit notes. One click, shareable/exportable. |
+| 2 | **Unassigned Tasks callout** | Dashboard / Initiative View | Widget or badge surfacing tasks with no assigned worker across all sites — currently buried inside each Epic. |
+| 3 | **Worker quick-contact** | Anywhere a worker name appears | Click any worker name → popover with phone, WhatsApp link, current site assignment, and PTO status. |
+| 4 | **Photo gallery tab** | Epic Detail (center panel) | "Gallery" tab showing all Epic photos as a grid, separate from the chronological feed. Useful for pre-signoff review. |
+| 5 | **Milestone / deadline per Epic** | Initiative View epic cards | Expected completion date with traffic-light indicator: on track / at risk / overdue. Time is currently absent from the pipeline view. |
+| 6 | **Checklist templates** | Epic Detail — "+ Add Task" | "Use standard checklist" option pre-populates the task list with the standard tasks for that Epic type, saving repetitive setup across sites. |
+
+---
+
+## 18. Slow Burns (larger investments)
+
+Features that require real backend work but would significantly differentiate the product.
+
+| # | Feature | What it does | Why it matters |
+|---|---------|--------------|----------------|
+| 1 | **Predictive cost forecasting** | Projects final Epic cost based on spend rate and remaining tasks — "At this pace, Top-Out will finish $8,400 over budget" — visible before it becomes a crisis. | Shifts managers from reactive to proactive on cost. |
+| 2 | **Telegram → task auto-matching** | NLP (or keyword matching) that automatically links a photo update to the correct task without manager involvement. Currently matching is manual and hand-waved in the spec. | The linchpin of the Telegram flow — without it, managers still triage every update. Highest-leverage slow burn. |
+| 3 | **Real-time photo processing** | Vision AI on uploaded photos detects work completion vs. problem, trade visible, PPE compliance. Surfaces issues before the manager reads the caption. | Turns passive photo logging into active QA. |
+| 4 | **Cross-site scheduling conflict detection** | Flags when a worker is double-booked across sites, or when a site has no workers scheduled for the next N days, before it causes a stall. | Prevents the most common cause of unexpected delays. |
+| 5 | **Subcontractor / vendor layer** | Adds a vendor dimension to Epics: who's doing it, PO amount, invoice vs. actual. Currently the model assumes direct employees only. | Captures the missing half of the real cost story for plumbing jobs that use subs. |
+| 6 | **Client-facing progress portal** | Read-only Initiative view — progress %, selected photos, milestone dates — shareable with the building owner. Same data, stripped of internal cost details and notes. | Turns the internal tool into a client communication tool with no extra work. |
+| 7 | **Offline-first mobile app** | PWA that queues photo uploads and syncs when connectivity returns. The Telegram bot fails silently underground or in basements with poor signal. | Required for real field adoption — workers are often in no-signal environments. |
+
+---
+
+## 19. Out of Scope (for this prototype)
 
 - Authentication / user management
 - Real Telegram bot backend
