@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ConstructFlow — דמו</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #0f172a; font-size: 14px; }
+
+  .screen { display: none; min-height: 100vh; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* NAV */
+  .navbar { background:#fff; border-bottom:1px solid #e2e8f0; padding:0 32px; height:56px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+  .navbar-logo { font-size:16px; font-weight:700; color:#2563eb; font-family:'Inter',sans-serif; }
+  .navbar-center { display:flex; align-items:center; gap:4px; margin-right:24px; }
+  .nav-tab { padding:6px 14px; border-radius:7px; font-size:12px; font-weight:500; color:#64748b; cursor:pointer; transition:.15s; border:none; background:none; }
+  .nav-tab:hover { background:#f1f5f9; color:#0f172a; }
+  .nav-tab.active-tab { background:#eff6ff; color:#2563eb; font-weight:600; }
+  .navbar-right { display:flex; align-items:center; gap:10px; }
+  .avatar { width:30px; height:30px; background:#2563eb; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:600; }
+  .navbar-user { font-size:13px; color:#64748b; font-weight:500; }
+  .breadcrumb { display:flex; align-items:center; gap:6px; font-size:13px; margin-right:24px; }
+  .breadcrumb .crumb { color:#94a3b8; cursor:pointer; }
+  .breadcrumb .crumb:hover { color:#2563eb; text-decoration:underline; }
+  .breadcrumb .sep { color:#cbd5e1; }
+  .breadcrumb .current { color:#0f172a; font-weight:600; }
+
+  .page-content { padding:24px 32px 48px; flex:1; }
+
+  /* CARDS */
+  .card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:16px; transition:box-shadow .15s,border-color .15s; }
+  .card.clickable { cursor:pointer; }
+  .card.clickable:hover { box-shadow:0 4px 16px rgba(37,99,235,.10); border-color:#93c5fd; }
+
+  /* BADGES */
+  .badge { display:inline-flex; align-items:center; padding:3px 8px; border-radius:999px; font-size:10px; font-weight:600; white-space:nowrap; }
+  .badge-red    { background:#fef2f2; color:#dc2626; }
+  .badge-green  { background:#f0fdf4; color:#16a34a; }
+  .badge-blue   { background:#eff6ff; color:#2563eb; }
+  .badge-orange { background:#fff7ed; color:#c2410c; }
+  .badge-gray   { background:#f1f5f9; color:#94a3b8; }
+  .badge-gold   { background:#fefce8; color:#854d0e; border:1px solid #fef08a; }
+
+  /* PROGRESS */
+  .progress-track { background:#e2e8f0; border-radius:6px; height:6px; overflow:hidden; }
+  .progress-fill  { height:100%; border-radius:6px; }
+
+  /* BUTTONS */
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:7px; font-size:12px; font-weight:600; cursor:pointer; border:none; transition:.15s; }
+  .btn-primary { background:#2563eb; color:#fff; }
+  .btn-primary:hover { background:#1d4ed8; }
+  .btn-ghost { background:#f1f5f9; color:#374151; border:1px solid #e2e8f0; }
+  .btn-ghost:hover { background:#e2e8f0; }
+  .btn-gold { background:#fefce8; color:#854d0e; border:1px solid #fef08a; }
+  .btn-gold:hover { background:#fef9c3; }
+  .btn-sm { padding:5px 12px; font-size:11px; }
+  .btn-xs { padding:3px 8px; font-size:10px; }
+
+  .section-title { font-size:14px; font-weight:700; color:#0f172a; margin-bottom:12px; }
+
+  /* ═══ SCREEN 1 — DASHBOARD ═══ */
+  .alert-banner { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:14px 20px; display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+  .alert-icon { font-size:20px; flex-shrink:0; }
+  .alert-text h4 { font-size:13px; font-weight:700; color:#991b1b; margin-bottom:3px; }
+  .alert-text p  { font-size:11px; color:#b91c1c; }
+  .alert-banner .btn { margin-inline-start:auto; flex-shrink:0; background:#fff; color:#991b1b; border:1px solid #fecaca; }
+
+  .progress-strip { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:14px 20px; margin-bottom:20px; }
+  .progress-strip h4 { font-size:12px; font-weight:700; color:#166534; margin-bottom:10px; }
+  .progress-stats { display:flex; gap:48px; }
+  .stat-item .num { font-size:26px; font-weight:800; color:#15803d; line-height:1; direction:ltr; }
+  .stat-item .lbl { font-size:10px; color:#4ade80; margin-top:2px; }
+
+  .initiatives-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .initiatives-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
+  .init-card .site-name { font-size:13px; font-weight:700; color:#0f172a; direction:ltr; text-align:right; }
+  .init-card .card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+  .init-card .stage-label { font-size:10px; color:#64748b; margin-bottom:7px; }
+  .init-card .card-footer { display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:10px; color:#94a3b8; }
+  .init-card .cost-label { font-size:10px; font-weight:600; }
+  .init-card.alert-card { border-color:#fecaca; }
+  .init-card.warn-card  { border-color:#fed7aa; }
+
+  .radar-widget { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:18px 20px; }
+  .radar-bars { display:flex; gap:24px; align-items:flex-end; margin:14px 0 12px; }
+  .radar-bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .radar-bar-col .bar-label { font-size:10px; color:#64748b; text-align:center; }
+  .radar-bar-col .bar-label.alert { color:#dc2626; font-weight:600; }
+  .radar-bar { border-radius:5px 5px 0 0; width:100%; }
+  .radar-bar-col .bar-pct { font-size:11px; font-weight:700; direction:ltr; }
+  .radar-insight { background:#fef2f2; border:1px solid #fecaca; border-radius:7px; padding:10px 14px; font-size:11px; color:#991b1b; line-height:1.6; }
+
+  /* ═══ SCREEN 2 — INITIATIVE ═══ */
+  .init-header { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:18px 20px; display:flex; align-items:center; gap:28px; margin-bottom:16px; }
+  .init-header .site-title { font-size:22px; font-weight:800; color:#0f172a; direction:ltr; }
+  .init-header .meta { font-size:11px; color:#64748b; margin-top:3px; }
+  .init-header .stats { display:flex; gap:24px; margin-inline-start:auto; }
+  .init-header .stat .val { font-size:18px; font-weight:800; direction:ltr; }
+  .init-header .stat .lbl { font-size:9px; color:#64748b; }
+
+  .pipeline-bar-wrap { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:14px 20px; margin-bottom:16px; }
+  .pipeline-bar-label { font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:.05em; margin-bottom:8px; }
+  .pipeline-track { display:flex; gap:4px; height:9px; margin-bottom:7px; }
+  .pipeline-track .seg { flex:1; border-radius:4px; }
+  .pipeline-labels { display:flex; gap:4px; }
+  .pipeline-labels .seg-lbl { flex:1; font-size:10px; text-align:center; }
+
+  .epics-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+  .epic-card { border-radius:10px; padding:14px; }
+  .epic-card.done { border:1px solid #bbf7d0; background:#fff; opacity:.8; }
+  .epic-card.active { border:2px solid #2563eb; background:#fff; box-shadow:0 2px 12px rgba(37,99,235,.13); }
+  .epic-card.pending { border:1.5px dashed #cbd5e1; background:#f8fafc; }
+  .epic-card .epic-title { font-size:12px; font-weight:700; margin-bottom:8px; }
+  .epic-card.done .epic-title { color:#15803d; }
+  .epic-card.active .epic-title { color:#1d4ed8; }
+  .epic-card.pending .epic-title { color:#94a3b8; }
+  .epic-card .epic-meta { font-size:9px; color:#64748b; margin-bottom:5px; }
+  .epic-card .epic-cost { font-size:9px; font-weight:600; margin-bottom:9px; }
+  .epic-card .epic-footer { border-top:1px solid #e2e8f0; padding-top:8px; margin-top:8px; font-size:9px; color:#94a3b8; }
+  .epic-card .photo-thumbs { display:flex; gap:4px; margin-top:6px; }
+  .epic-card .photo-thumb { width:32px; height:32px; background:#e2e8f0; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:14px; }
+
+  .cost-compare { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:16px 20px; margin-bottom:16px; }
+  .cost-tiles { display:flex; gap:10px; margin-top:12px; }
+  .cost-tile { flex:1; border-radius:8px; padding:10px; text-align:center; }
+  .cost-tile .tile-lbl { font-size:9px; color:#64748b; margin-bottom:4px; }
+  .cost-tile .tile-val { font-size:15px; font-weight:800; direction:ltr; }
+  .cost-tile .tile-sub { font-size:8px; color:#94a3b8; margin-top:2px; }
+  .cost-tile.good { background:#f0fdf4; }
+  .cost-tile.warn { background:#fff7ed; border:1px solid #fed7aa; }
+  .cost-tile.neutral { background:#f8fafc; }
+
+  /* ── Initiative Storage / Knowledge Base ── */
+  .kb-widget { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:16px 20px; }
+  .kb-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .kb-tabs { display:flex; gap:4px; }
+  .kb-tab { padding:5px 12px; border-radius:6px; font-size:11px; font-weight:500; color:#64748b; cursor:pointer; border:none; background:none; transition:.15s; }
+  .kb-tab:hover { background:#f1f5f9; }
+  .kb-tab.active { background:#eff6ff; color:#2563eb; font-weight:600; }
+  .kb-files { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .kb-file { border:1px solid #e2e8f0; border-radius:8px; padding:12px; cursor:pointer; transition:.15s; display:flex; flex-direction:column; gap:6px; }
+  .kb-file:hover { border-color:#93c5fd; background:#f8fafc; }
+  .kb-file .kb-icon { font-size:24px; }
+  .kb-file .kb-name { font-size:11px; font-weight:600; color:#0f172a; }
+  .kb-file .kb-meta { font-size:9px; color:#94a3b8; }
+  .kb-file .kb-type { display:inline-flex; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:600; }
+  .kb-type-plan { background:#eff6ff; color:#2563eb; }
+  .kb-type-meeting { background:#f0fdf4; color:#16a34a; }
+  .kb-type-todo { background:#fff7ed; color:#c2410c; }
+  .kb-type-other { background:#f1f5f9; color:#64748b; }
+
+  /* ═══ SCREEN 3 — EPIC DETAIL ═══ */
+  .epic-detail-header { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:16px 20px; display:flex; align-items:center; gap:20px; margin-bottom:16px; }
+  .epic-detail-header .epic-name { font-size:18px; font-weight:800; color:#0f172a; }
+  .epic-detail-header .badges { display:flex; gap:6px; margin-top:5px; }
+  .epic-detail-header .meta { font-size:11px; color:#64748b; margin-top:4px; }
+  .epic-detail-header .stats { display:flex; gap:20px; margin-inline-start:auto; text-align:center; }
+  .epic-detail-header .stat .val { font-size:16px; font-weight:800; direction:ltr; }
+  .epic-detail-header .stat .lbl { font-size:9px; color:#64748b; }
+
+  .three-col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+
+  /* Tasks */
+  .tasks-panel { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:14px; }
+  .tasks-panel .panel-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .task-section-label { font-size:9px; color:#94a3b8; font-weight:700; letter-spacing:.04em; margin-bottom:6px; }
+  .task-item { border-radius:6px; margin-bottom:4px; overflow:hidden; }
+  .task-item-row { display:flex; align-items:flex-start; gap:8px; padding:7px 8px; cursor:pointer; transition:.1s; }
+  .task-item-row:hover { filter:brightness(.97); }
+  .task-item.done .task-item-row { background:#f0fdf4; }
+  .task-item.active .task-item-row { background:#eff6ff; border:1px solid #bfdbfe; }
+  .task-item.pending .task-item-row { border:1px solid #e2e8f0; }
+  .task-check { width:15px; height:15px; border-radius:4px; flex-shrink:0; margin-top:1px; display:flex; align-items:center; justify-content:center; font-size:9px; }
+  .task-check.done-chk { background:#22c55e; color:#fff; }
+  .task-check.active-chk { border:2px solid #2563eb; }
+  .task-check.pending-chk { border:1px solid #cbd5e1; background:#f1f5f9; }
+  .task-text { font-size:11px; flex:1; }
+  .task-text .name { color:#374151; }
+  .task-text .name.strikethrough { text-decoration:line-through; color:#94a3b8; }
+  .task-text .name.active-name { color:#1d4ed8; font-weight:600; }
+  .task-text .sub { font-size:9px; color:#94a3b8; margin-top:1px; }
+  .task-expand-icon { font-size:10px; color:#94a3b8; transition:transform .2s; flex-shrink:0; }
+  .task-item.expanded .task-expand-icon { transform:rotate(180deg); }
+
+  /* Task Comments */
+  .task-comments { display:none; background:#f8fafc; border-top:1px solid #e2e8f0; padding:10px 12px; }
+  .task-item.expanded .task-comments { display:block; }
+  .comment-thread { display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
+  .comment-entry { display:flex; gap:8px; }
+  .comment-dot { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff; flex-shrink:0; }
+  .comment-dot.blue { background:#2563eb; }
+  .comment-dot.purple { background:#7c3aed; }
+  .comment-dot.green { background:#16a34a; }
+  .comment-dot.gold { background:#b45309; }
+  .comment-body { flex:1; }
+  .comment-author { font-size:10px; font-weight:600; color:#0f172a; }
+  .comment-time { font-size:9px; color:#94a3b8; margin-right:6px; }
+  .comment-text { font-size:10px; color:#374151; margin-top:2px; line-height:1.5; }
+  .comment-input-row { display:flex; gap:6px; margin-top:4px; }
+  .comment-input { flex:1; border:1px solid #e2e8f0; border-radius:6px; padding:6px 10px; font-size:11px; outline:none; font-family:inherit; resize:none; }
+  .comment-input:focus { border-color:#93c5fd; }
+
+  /* Feed */
+  .feed-panel { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:14px; }
+  .feed-panel .panel-header { margin-bottom:12px; }
+  .feed-panel .panel-title { font-size:12px; font-weight:700; color:#0f172a; }
+  .feed-panel .panel-sub { font-size:10px; color:#64748b; margin-top:2px; }
+
+  /* Admin Status Input */
+  .admin-input-card { background:#fefce8; border:1px solid #fef08a; border-radius:8px; padding:12px; margin-bottom:12px; }
+  .admin-input-header { display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+  .admin-input-header .label { font-size:11px; font-weight:700; color:#854d0e; }
+  .admin-input-header .weight-badge { font-size:9px; background:#fef9c3; color:#854d0e; border:1px solid #fef08a; padding:2px 6px; border-radius:10px; margin-inline-start:auto; }
+  .admin-textarea { width:100%; border:1px solid #fef08a; border-radius:6px; padding:8px 10px; font-size:11px; font-family:inherit; resize:none; background:#fff; outline:none; min-height:60px; }
+  .admin-textarea:focus { border-color:#ca8a04; }
+  .admin-actions { display:flex; gap:6px; margin-top:8px; }
+  .btn-record { background:#fff; border:1px solid #fef08a; color:#854d0e; border-radius:6px; padding:5px 12px; font-size:11px; cursor:pointer; display:flex; align-items:center; gap:4px; }
+  .btn-record:hover { background:#fef9c3; }
+  .btn-record.recording { background:#fef2f2; border-color:#fecaca; color:#dc2626; animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+  .feed-item { border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; margin-bottom:8px; }
+  .feed-item.admin-visit { border-color:#fef08a; }
+  .feed-item-header { background:#f8fafc; padding:7px 10px; display:flex; justify-content:space-between; align-items:center; }
+  .feed-item.admin-visit .feed-item-header { background:#fefce8; }
+  .feed-worker { display:flex; align-items:center; gap:6px; }
+  .worker-dot { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff; }
+  .worker-dot.blue { background:#2563eb; }
+  .worker-dot.purple { background:#7c3aed; }
+  .worker-dot.gold { background:#b45309; }
+  .worker-name { font-size:10px; font-weight:600; color:#0f172a; }
+  .feed-time { font-size:9px; color:#94a3b8; direction:ltr; }
+  .feed-photos { display:grid; gap:2px; background:#e2e8f0; }
+  .feed-photos.two { grid-template-columns:1fr 1fr; }
+  .feed-photos.three { grid-template-columns:1fr 1fr 1fr; }
+  .feed-photo { background:#cbd5e1; display:flex; align-items:center; justify-content:center; font-size:20px; height:56px; }
+  .feed-caption { padding:7px 10px; font-size:10px; color:#374151; }
+  .feed-task-link { padding:0 10px 7px; font-size:9px; }
+  .feed-task-link.complete { color:#16a34a; font-weight:600; }
+  .feed-task-link.active { color:#64748b; }
+  .feed-view-all { text-align:center; padding:6px; font-size:10px; color:#2563eb; cursor:pointer; }
+
+  /* Cost panel */
+  .cost-col { display:flex; flex-direction:column; gap:12px; }
+  .cost-card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:14px; }
+  .cost-row { display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; }
+  .cost-row .lbl { color:#64748b; }
+  .cost-row .val { font-weight:700; direction:ltr; }
+  .cost-bar-wrap { margin:10px 0 4px; }
+  .cost-bar-track { background:#e2e8f0; border-radius:6px; height:11px; position:relative; }
+  .cost-bar-fill { height:100%; border-radius:6px; }
+  .cost-bar-marker { position:absolute; right:9%; top:-3px; bottom:-3px; width:2px; background:#dc2626; border-radius:1px; }
+  .cost-bar-labels { display:flex; justify-content:space-between; font-size:9px; color:#94a3b8; margin-top:3px; direction:ltr; }
+  .cost-warning { background:#fff7ed; border:1px solid #fed7aa; border-radius:7px; padding:9px 12px; font-size:10px; color:#92400e; margin-top:10px; line-height:1.6; }
+
+  .cross-site-chart .chart-title { font-size:12px; font-weight:700; color:#0f172a; margin-bottom:10px; }
+  .chart-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-direction:row-reverse; }
+  .chart-row .row-label { font-size:9px; color:#64748b; width:64px; text-align:left; white-space:nowrap; direction:ltr; }
+  .chart-row .row-label.current { color:#1d4ed8; font-weight:700; }
+  .chart-track { flex:1; background:#e2e8f0; border-radius:4px; height:9px; overflow:hidden; }
+  .chart-fill { height:100%; border-radius:4px; float:right; }
+  .chart-pct { font-size:9px; font-weight:700; width:30px; text-align:right; direction:ltr; }
+  .chart-divider { border-top:1px dashed #e2e8f0; margin:6px 0; }
+
+  /* ═══ SCREEN 4 — PTO ═══ */
+  .pto-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+  .pto-header h2 { font-size:20px; font-weight:800; color:#0f172a; }
+  .pto-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+  .pto-summary-card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:16px; text-align:center; }
+  .pto-summary-card .ps-num { font-size:28px; font-weight:800; direction:ltr; }
+  .pto-summary-card .ps-lbl { font-size:10px; color:#64748b; margin-top:3px; }
+
+  .pto-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .pto-section-title { font-size:13px; font-weight:700; color:#0f172a; margin-bottom:12px; }
+
+  /* Employee PTO cards */
+  .emp-list { display:flex; flex-direction:column; gap:8px; }
+  .emp-card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:14px 16px; display:flex; align-items:center; gap:14px; }
+  .emp-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff; flex-shrink:0; }
+  .emp-info { flex:1; }
+  .emp-name { font-size:13px; font-weight:600; color:#0f172a; }
+  .emp-role { font-size:10px; color:#64748b; margin-top:1px; }
+  .emp-pto { text-align:center; }
+  .emp-pto .days { font-size:20px; font-weight:800; direction:ltr; }
+  .emp-pto .days-lbl { font-size:9px; color:#64748b; }
+  .emp-pto-bar { width:80px; }
+  .emp-pto-bar .pto-track { background:#e2e8f0; border-radius:4px; height:5px; margin-bottom:3px; }
+  .emp-pto-bar .pto-fill { height:100%; border-radius:4px; }
+  .emp-pto-bar .pto-fraction { font-size:9px; color:#94a3b8; direction:ltr; text-align:center; }
+
+  /* Requests */
+  .requests-list { display:flex; flex-direction:column; gap:8px; }
+  .request-card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; }
+  .request-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .request-name { font-size:12px; font-weight:600; color:#0f172a; }
+  .request-dates { font-size:10px; color:#64748b; margin-bottom:4px; direction:ltr; text-align:right; }
+  .request-reason { font-size:10px; color:#94a3b8; }
+  .request-actions { display:flex; gap:6px; margin-top:8px; }
+
+  /* ═══ MOBILE ═══ */
+  @media (max-width:640px) {
+    .page-content { padding:16px 14px 40px; }
+    .navbar { padding:0 16px; }
+    .navbar-center { display:none; }
+    .navbar-user { display:none; }
+    .breadcrumb { font-size:11px; margin-right:8px; }
+    .breadcrumb .crumb { max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .alert-banner { flex-wrap:wrap; gap:10px; }
+    .alert-banner .btn { margin-inline-start:0; width:100%; justify-content:center; }
+    .progress-stats { display:grid; grid-template-columns:1fr 1fr; gap:12px 24px; }
+    .stat-item .num { font-size:22px; }
+    .initiatives-header { flex-direction:column; align-items:flex-start; gap:10px; }
+    .initiatives-header > div { width:100%; }
+    .initiatives-grid { grid-template-columns:1fr; }
+    .radar-bars { gap:10px; }
+    .radar-bar-col .bar-label { font-size:8px; }
+    .init-header { flex-direction:column; align-items:flex-start; gap:14px; }
+    .init-header .stats { margin-inline-start:0; gap:16px; }
+    .init-header > button { width:100%; justify-content:center; }
+    .pipeline-labels .seg-lbl { font-size:8px; }
+    .epics-grid { grid-template-columns:1fr 1fr; gap:8px; }
+    .kb-files { grid-template-columns:1fr 1fr; }
+    .cost-tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .epic-detail-header { flex-direction:column; align-items:flex-start; gap:12px; }
+    .epic-detail-header .stats { margin-inline-start:0; gap:16px; }
+    .three-col { grid-template-columns:1fr; }
+    .pto-summary { grid-template-columns:1fr 1fr; }
+    .pto-grid { grid-template-columns:1fr; }
+    .emp-card { flex-wrap:wrap; }
+  }
+
+  @media (min-width:641px) and (max-width:900px) {
+    .page-content { padding:20px 20px 40px; }
+    .initiatives-grid { grid-template-columns:1fr 1fr; }
+    .epics-grid { grid-template-columns:1fr 1fr; }
+    .kb-files { grid-template-columns:1fr 1fr; }
+    .three-col { grid-template-columns:1fr 1fr; }
+    .three-col>.cost-col { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .init-header { flex-wrap:wrap; }
+    .pto-summary { grid-template-columns:1fr 1fr; }
+  }
+
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+  .screen.active { animation:fadeIn .2s ease; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════
+     מסך 1 — לוח בקרה ראשי
+══════════════════════════════ -->
+<div id="screen-dashboard" class="screen active">
+  <nav class="navbar">
+    <span class="navbar-logo">ConstructFlow</span>
+    <div class="navbar-center">
+      <button class="nav-tab active-tab" onclick="goTo('dashboard')">לוח בקרה</button>
+      <button class="nav-tab" onclick="goTo('pto')">חופשות 🏖</button>
+    </div>
+    <div class="navbar-right">
+      <div class="avatar">DS</div>
+      <span class="navbar-user">דניאל ס.</span>
+    </div>
+  </nav>
+  <div class="page-content">
+
+    <div class="alert-banner">
+      <span class="alert-icon">🚨</span>
+      <div class="alert-text">
+        <h4>2 אתרים דורשים תשומת לב</h4>
+        <p>456 Oak Ave — גמר גס תקוע (אין עדכון מזה 3 ימים) &nbsp;·&nbsp; 789 Pine Rd — חריגת תקציב מעל 20%</p>
+      </div>
+      <button class="btn btn-sm">כל ההתראות</button>
+    </div>
+
+    <div class="progress-strip">
+      <h4>✅ &nbsp;התקדמות אתמול</h4>
+      <div class="progress-stats">
+        <div class="stat-item"><div class="num">14</div><div class="lbl">משימות הושלמו</div></div>
+        <div class="stat-item"><div class="num">23</div><div class="lbl">תמונות התקבלו</div></div>
+        <div class="stat-item"><div class="num">5</div><div class="lbl">אתרים פעילים</div></div>
+        <div class="stat-item"><div class="num">2</div><div class="lbl">שלבים הושלמו</div></div>
+      </div>
+    </div>
+
+    <div class="initiatives-header">
+      <span class="section-title" style="margin:0;">יוזמות פעילות (8)</span>
+      <div style="display:flex;gap:8px;">
+        <input style="border:1px solid #e2e8f0;border-radius:7px;padding:6px 12px;font-size:11px;color:#374151;outline:none;text-align:right;" placeholder="חיפוש אתרים..." />
+        <button class="btn btn-ghost btn-sm">סינון ▾</button>
+      </div>
+    </div>
+
+    <div class="initiatives-grid">
+      <div class="card init-card alert-card clickable" onclick="goTo('initiative','456 Oak Ave','stalled')">
+        <div class="card-header"><span class="site-name">456 Oak Ave</span><span class="badge badge-red">⚠ תקוע</span></div>
+        <div class="stage-label">שלב נוכחי: <span style="color:#f59e0b;">גמר גס עליון</span></div>
+        <div class="progress-track" style="margin-bottom:6px;"><div class="progress-fill" style="background:#f59e0b;width:45%;"></div></div>
+        <div class="card-footer"><span>45% הושלם</span><span class="cost-label" style="color:#dc2626;">חריגה של 8%+</span></div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:5px;">עדכון אחרון: לפני 3 ימים</div>
+      </div>
+      <div class="card init-card clickable" onclick="goTo('initiative','123 Main St','ontrack')">
+        <div class="card-header"><span class="site-name">123 Main St</span><span class="badge badge-green">✓ במסלול</span></div>
+        <div class="stage-label">שלב נוכחי: <span style="color:#2563eb;">תשתיות תת-קרקעיות</span></div>
+        <div class="progress-track" style="margin-bottom:6px;"><div class="progress-fill" style="background:#22c55e;width:70%;"></div></div>
+        <div class="card-footer"><span>70% הושלם</span><span class="cost-label" style="color:#16a34a;">בתקציב</span></div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:5px;">עדכון אחרון: היום, 09:42</div>
+      </div>
+      <div class="card init-card warn-card clickable" onclick="goTo('initiative','789 Pine Rd','over')">
+        <div class="card-header"><span class="site-name">789 Pine Rd</span><span class="badge badge-orange">$ חריגת תקציב</span></div>
+        <div class="stage-label">שלב נוכחי: <span style="color:#7c3aed;">גמר</span></div>
+        <div class="progress-track" style="margin-bottom:6px;"><div class="progress-fill" style="background:#a855f7;width:88%;"></div></div>
+        <div class="card-footer"><span>88% הושלם</span><span class="cost-label" style="color:#c2410c;">חריגה של 22%+</span></div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:5px;">עדכון אחרון: אתמול</div>
+      </div>
+      <div class="card init-card clickable" onclick="goTo('initiative','321 Elm St','ontrack')">
+        <div class="card-header"><span class="site-name">321 Elm St</span><span class="badge badge-green">✓ במסלול</span></div>
+        <div class="stage-label">שלב נוכחי: <span style="color:#22c55e;">טרום בנייה</span></div>
+        <div class="progress-track" style="margin-bottom:6px;"><div class="progress-fill" style="background:#22c55e;width:20%;"></div></div>
+        <div class="card-footer"><span>20% הושלם</span><span class="cost-label" style="color:#16a34a;">בתקציב</span></div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:5px;">עדכון אחרון: היום, 08:10</div>
+      </div>
+      <div class="card init-card clickable" onclick="goTo('initiative','555 Birch Blvd','ontrack')">
+        <div class="card-header"><span class="site-name">555 Birch Blvd</span><span class="badge badge-green">✓ במסלול</span></div>
+        <div class="stage-label">שלב נוכחי: <span style="color:#f59e0b;">גמר גס עליון</span></div>
+        <div class="progress-track" style="margin-bottom:6px;"><div class="progress-fill" style="background:#f59e0b;width:55%;"></div></div>
+        <div class="card-footer"><span>55% הושלם</span><span class="cost-label" style="color:#16a34a;">בתקציב</span></div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:5px;">עדכון אחרון: אתמול</div>
+      </div>
+      <div class="card init-card clickable" onclick="goTo('initiative','99 Maple Dr','ontrack')">
+        <div class="card-header"><span class="site-name">99 Maple Dr</span><span class="badge badge-green">✓ במסלול</span></div>
+        <div class="stage-label">שלב נוכחי: <span style="color:#2563eb;">תשתיות תת-קרקעיות</span></div>
+        <div class="progress-track" style="margin-bottom:6px;"><div class="progress-fill" style="background:#22c55e;width:35%;"></div></div>
+        <div class="card-footer"><span>35% הושלם</span><span class="cost-label" style="color:#16a34a;">בתקציב</span></div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:5px;">עדכון אחרון: היום, 07:55</div>
+      </div>
+    </div>
+
+    <div class="radar-widget">
+      <div class="section-title" style="margin:0;">💸 &nbsp;מכ״ם דליפות עלויות — דפוס בין-אתרי</div>
+      <div class="radar-bars">
+        <div class="radar-bar-col"><div class="bar-label">טרום בנייה</div><div class="radar-bar" style="background:#22c55e;height:40px;"></div><div class="bar-pct" style="color:#16a34a;">ממוצע 2%-</div></div>
+        <div class="radar-bar-col"><div class="bar-label">תשתיות</div><div class="radar-bar" style="background:#22c55e;height:48px;"></div><div class="bar-pct" style="color:#16a34a;">ממוצע 1%+</div></div>
+        <div class="radar-bar-col"><div class="bar-label alert">⚠ גמר גס עליון</div><div class="radar-bar" style="background:#ef4444;height:96px;"></div><div class="bar-pct" style="color:#dc2626;">ממוצע 19%+</div></div>
+        <div class="radar-bar-col"><div class="bar-label">גמר</div><div class="radar-bar" style="background:#f59e0b;height:64px;"></div><div class="bar-pct" style="color:#d97706;">ממוצע 7%+</div></div>
+      </div>
+      <div class="radar-insight">🔍 &nbsp;<strong>שלב הגמר הגס העליון הוא דליפת הכסף הגדולה ביותר שלך</strong> — ממוצע של 19% מעל התקציב ב-6 מתוך 8 אתרים פעילים. &nbsp;<span style="color:#2563eb;cursor:pointer;">← לפירוט המלא</span></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     מסך 2 — תצוגת יוזמה
+══════════════════════════════ -->
+<div id="screen-initiative" class="screen">
+  <nav class="navbar">
+    <span class="navbar-logo">ConstructFlow</span>
+    <div class="breadcrumb">
+      <span class="crumb" onclick="goTo('dashboard')">לוח בקרה</span>
+      <span class="sep">‹</span>
+      <span class="current" id="init-breadcrumb">123 Main St</span>
+    </div>
+    <div class="navbar-right">
+      <button class="nav-tab" onclick="goTo('pto')" style="font-size:11px;">חופשות 🏖</button>
+      <div class="avatar">DS</div>
+      <span class="navbar-user">דניאל ס.</span>
+    </div>
+  </nav>
+  <div class="page-content">
+
+    <div class="init-header">
+      <div>
+        <div class="site-title" id="init-title">123 Main St</div>
+        <div class="meta">התחיל: 3 מרץ 2026 &nbsp;·&nbsp; סיום משוער: 15 אוג׳ 2026 &nbsp;·&nbsp; אחראי: Mike Torres</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="val" id="init-pct">70%</div><div class="lbl">התקדמות כוללת</div></div>
+        <div class="stat"><div class="val" id="init-budget" style="color:#16a34a;">בתקציב</div><div class="lbl">$142k מתוך $155k</div></div>
+        <div class="stat"><div class="val">3</div><div class="lbl">עובדי שטח</div></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="margin-inline-start:12px;">עריכה</button>
+    </div>
+
+    <div class="pipeline-bar-wrap">
+      <div class="pipeline-bar-label">צנרת שלבים</div>
+      <div class="pipeline-track">
+        <div class="seg" style="background:#22c55e;"></div>
+        <div class="seg" style="background:#22c55e;"></div>
+        <div class="seg" style="background:#f59e0b;"></div>
+        <div class="seg" style="background:#e2e8f0;"></div>
+      </div>
+      <div class="pipeline-labels">
+        <div class="seg-lbl" style="color:#16a34a;">טרום בנייה</div>
+        <div class="seg-lbl" style="color:#16a34a;">תשתיות</div>
+        <div class="seg-lbl" style="color:#f59e0b;font-weight:700;">גמר גס ▶ פעיל</div>
+        <div class="seg-lbl" style="color:#94a3b8;">גמר</div>
+      </div>
+    </div>
+
+    <div class="epics-grid">
+      <div class="epic-card done">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="epic-title">טרום בנייה</div><span class="badge badge-green">✓ הושלם</span></div>
+        <div class="progress-track" style="margin-bottom:8px;"><div class="progress-fill" style="background:#22c55e;width:100%;"></div></div>
+        <div class="epic-meta">הושלם 2 אפר׳ 2026</div>
+        <div class="epic-cost" style="color:#16a34a;">תקציב: ✓ חסכון של 3%</div>
+        <div class="epic-footer">משימות: 8/8 &nbsp;·&nbsp; 📷 12 תמונות</div>
+      </div>
+      <div class="epic-card done">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="epic-title">תשתיות תת-קרקעיות</div><span class="badge badge-green">✓ הושלם</span></div>
+        <div class="progress-track" style="margin-bottom:8px;"><div class="progress-fill" style="background:#22c55e;width:100%;"></div></div>
+        <div class="epic-meta">הושלם 18 אפר׳ 2026</div>
+        <div class="epic-cost" style="color:#16a34a;">תקציב: ✓ בתקציב</div>
+        <div class="epic-footer">משימות: 11/11 &nbsp;·&nbsp; 📷 31 תמונות</div>
+      </div>
+      <div class="epic-card active clickable" onclick="goTo('epic')">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="epic-title">גמר גס עליון</div><span class="badge badge-blue">⚡ פעיל</span></div>
+        <div class="progress-track" style="margin-bottom:6px;"><div class="progress-fill" style="background:#f59e0b;width:60%;"></div></div>
+        <div class="epic-meta">60% הושלם &nbsp;·&nbsp; תחזית: 30 מאי</div>
+        <div class="epic-cost" style="color:#c2410c;">תקציב: ⚠ חריגה 8% ($48k/$44k)</div>
+        <div class="epic-footer">
+          <div style="margin-bottom:6px;">עדכון אחרון מטלגרם:</div>
+          <div class="photo-thumbs"><div class="photo-thumb">📷</div><div class="photo-thumb">📷</div><div class="photo-thumb" style="background:#e2e8f0;font-size:10px;color:#94a3b8;">+14</div></div>
+          <div style="margin-top:6px;">משימות: 6/10 &nbsp;·&nbsp; דרך Carlos R.</div>
+        </div>
+        <button class="btn btn-primary btn-sm" style="width:100%;margin-top:10px;justify-content:center;" onclick="event.stopPropagation();goTo('epic')">← פתח פרטי שלב</button>
+      </div>
+      <div class="epic-card pending">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="epic-title">גמר</div><span class="badge badge-gray">טרם החל</span></div>
+        <div class="progress-track" style="margin-bottom:8px;"></div>
+        <div class="epic-meta">תחילה מתוכננת: 30 מאי 2026</div>
+        <div class="epic-cost" style="color:#94a3b8;">תקציב: $38k מוקצה</div>
+        <div class="epic-footer">משימות: 0/9 &nbsp;·&nbsp; לא משויך</div>
+      </div>
+    </div>
+
+    <div class="cost-compare">
+      <div class="section-title" style="margin:0;">💸 &nbsp;אתר זה מול ממוצעי התיק</div>
+      <div class="cost-tiles">
+        <div class="cost-tile good"><div class="tile-lbl">טרום בנייה</div><div class="tile-val" style="color:#16a34a;">-3%</div><div class="tile-sub">מול ממוצע התיק</div></div>
+        <div class="cost-tile good"><div class="tile-lbl">תשתיות</div><div class="tile-val" style="color:#16a34a;">0%</div><div class="tile-sub">מול ממוצע התיק</div></div>
+        <div class="cost-tile warn"><div class="tile-lbl" style="color:#92400e;font-weight:600;">גמר גס ⚠</div><div class="tile-val" style="color:#c2410c;">+8%</div><div class="tile-sub">ממוצע תיק: +19%</div></div>
+        <div class="cost-tile neutral"><div class="tile-lbl">גמר</div><div class="tile-val" style="color:#94a3b8;">—</div><div class="tile-sub">טרם החל</div></div>
+      </div>
+    </div>
+
+    <!-- ── מאגר ידע ── -->
+    <div class="kb-widget">
+      <div class="kb-header">
+        <div class="section-title" style="margin:0;">📁 &nbsp;מאגר ידע</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="kb-tabs">
+            <button class="kb-tab active" onclick="setKbTab(this,'all')">הכל</button>
+            <button class="kb-tab" onclick="setKbTab(this,'plan')">תוכניות</button>
+            <button class="kb-tab" onclick="setKbTab(this,'meeting')">פגישות</button>
+            <button class="kb-tab" onclick="setKbTab(this,'todo')">משימות</button>
+          </div>
+          <button class="btn btn-primary btn-sm">+ העלאה</button>
+        </div>
+      </div>
+      <div class="kb-files" id="kb-files-grid">
+        <div class="kb-file" data-type="plan"><span class="kb-type kb-type-plan">תוכנית</span><div class="kb-icon">📐</div><div class="kb-name">תוכנית קומה ראשונה.pdf</div><div class="kb-meta">הועלה 3 מרץ 2026 &nbsp;·&nbsp; Mike T.</div></div>
+        <div class="kb-file" data-type="plan"><span class="kb-type kb-type-plan">תוכנית</span><div class="kb-icon">📐</div><div class="kb-name">תוכנית צנרת - עדכון 2.dwg</div><div class="kb-meta">הועלה 15 מרץ 2026 &nbsp;·&nbsp; Mike T.</div></div>
+        <div class="kb-file" data-type="meeting"><span class="kb-type kb-type-meeting">פגישה</span><div class="kb-icon">📝</div><div class="kb-name">סיכום פגישת קיקאוף.docx</div><div class="kb-meta">הועלה 4 מרץ 2026 &nbsp;·&nbsp; דניאל ס.</div></div>
+        <div class="kb-file" data-type="meeting"><span class="kb-type kb-type-meeting">פגישה</span><div class="kb-icon">📝</div><div class="kb-name">סיכום ביקור 18 אפר׳.docx</div><div class="kb-meta">הועלה 18 אפר׳ 2026 &nbsp;·&nbsp; דניאל ס.</div></div>
+        <div class="kb-file" data-type="todo"><span class="kb-type kb-type-todo">משימות</span><div class="kb-icon">✅</div><div class="kb-name">רשימת פתיחה - גמר גס.xlsx</div><div class="kb-meta">הועלה 20 אפר׳ 2026 &nbsp;·&nbsp; Carlos R.</div></div>
+        <div class="kb-file" data-type="other"><span class="kb-type kb-type-other">אחר</span><div class="kb-icon">📎</div><div class="kb-name">אישור עירייה - ינואר.pdf</div><div class="kb-meta">הועלה 10 ינו׳ 2026 &nbsp;·&nbsp; Mike T.</div></div>
+        <div class="kb-file" data-type="other"><span class="kb-type kb-type-other">אחר</span><div class="kb-icon">📸</div><div class="kb-name">תמונות לפני - ינואר.zip</div><div class="kb-meta">הועלה 5 ינו׳ 2026 &nbsp;·&nbsp; Carlos R.</div></div>
+        <div class="kb-file" data-type="plan"><span class="kb-type kb-type-plan">תוכנית</span><div class="kb-icon">📐</div><div class="kb-name">תוכנית חשמל - קומה 2.pdf</div><div class="kb-meta">הועלה 1 אפר׳ 2026 &nbsp;·&nbsp; Mike T.</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     מסך 3 — פרטי שלב
+══════════════════════════════ -->
+<div id="screen-epic" class="screen">
+  <nav class="navbar">
+    <span class="navbar-logo">ConstructFlow</span>
+    <div class="breadcrumb">
+      <span class="crumb" onclick="goTo('dashboard')">לוח בקרה</span>
+      <span class="sep">‹</span>
+      <span class="crumb" onclick="goTo('initiative','123 Main St','ontrack')" id="epic-init-crumb">123 Main St</span>
+      <span class="sep">‹</span>
+      <span class="current">גמר גס עליון</span>
+    </div>
+    <div class="navbar-right">
+      <button class="nav-tab" onclick="goTo('pto')" style="font-size:11px;">חופשות 🏖</button>
+      <div class="avatar">DS</div>
+      <span class="navbar-user">דניאל ס.</span>
+    </div>
+  </nav>
+  <div class="page-content">
+
+    <div class="epic-detail-header">
+      <div style="flex:1;">
+        <div class="epic-name">גמר גס עליון</div>
+        <div class="badges"><span class="badge badge-blue">⚡ פעיל</span><span class="badge badge-orange">⚠ חריגה של 8%</span></div>
+        <div class="meta">התחיל: 20 אפר׳ 2026 &nbsp;·&nbsp; סיום משוער: 30 מאי 2026 &nbsp;·&nbsp; משויך: Carlos R., Juan M.</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="val">6/10</div><div class="lbl">משימות הושלמו</div></div>
+        <div class="stat"><div class="val" style="color:#c2410c;">$48k</div><div class="lbl">מתוך $44k תקציב</div></div>
+        <div class="stat"><div class="val">16</div><div class="lbl">תמונות</div></div>
+      </div>
+    </div>
+
+    <div class="three-col">
+
+      <!-- עמודה 1: משימות -->
+      <div class="tasks-panel">
+        <div class="panel-header">
+          <span style="font-size:12px;font-weight:700;color:#0f172a;">משימות</span>
+          <button class="btn btn-ghost btn-sm">+ הוסף משימה</button>
+        </div>
+        <div class="task-section-label">הושלמו</div>
+
+        <div class="task-item done" onclick="toggleTask(this)">
+          <div class="task-item-row"><div class="task-check done-chk">✓</div><div class="task-text"><div class="name strikethrough">התקנת צינורות ראשיים</div><div class="sub">Carlos R. · 21 אפר׳</div></div><span class="task-expand-icon">▾</span></div>
+          <div class="task-comments"><div class="comment-thread"><div class="comment-entry"><div class="comment-dot blue">C</div><div class="comment-body"><span class="comment-author">Carlos R.</span><span class="comment-time">21 אפר׳, 14:20</span><div class="comment-text">כל הצינורות הותקנו לפי תוכנית, אין חריגות</div></div></div><div class="comment-entry"><div class="comment-dot gold">D</div><div class="comment-body"><span class="comment-author">דניאל ס. (מנהל)</span><span class="comment-time">21 אפר׳, 16:00</span><div class="comment-text">מעולה, מאשר. יש לצלם לפני כיסוי הקירות.</div></div></div></div><div class="comment-input-row"><textarea class="comment-input" rows="1" placeholder="הוסף תגובה..."></textarea><button class="btn btn-primary btn-xs">שלח</button></div></div>
+        </div>
+
+        <div class="task-item done" onclick="toggleTask(this)">
+          <div class="task-item-row"><div class="task-check done-chk">✓</div><div class="task-text"><div class="name strikethrough">חיבור ניקוזי רצפה</div><div class="sub">Juan M. · 22 אפר׳</div></div><span class="task-expand-icon">▾</span></div>
+          <div class="task-comments"><div class="comment-thread"><div class="comment-entry"><div class="comment-dot purple">J</div><div class="comment-body"><span class="comment-author">Juan M.</span><span class="comment-time">22 אפר׳, 11:30</span><div class="comment-text">חיבור הניקוזים הושלם, בדיקת זרימה תקינה</div></div></div></div><div class="comment-input-row"><textarea class="comment-input" rows="1" placeholder="הוסף תגובה..."></textarea><button class="btn btn-primary btn-xs">שלח</button></div></div>
+        </div>
+
+        <div class="task-item done" onclick="toggleTask(this)">
+          <div class="task-item-row"><div class="task-check done-chk">✓</div><div class="task-text"><div class="name strikethrough">גמר גס ארובת אוורור</div><div class="sub">Carlos R. · 24 אפר׳</div></div><span class="task-expand-icon">▾</span></div>
+          <div class="task-comments"><div class="comment-thread"><div class="comment-entry"><div class="comment-dot blue">C</div><div class="comment-body"><span class="comment-author">Carlos R.</span><span class="comment-time">24 אפר׳, 15:10</span><div class="comment-text">ארובת האוורור הותקנה. היה צורך בהתאמה קטנה בקומה 2</div></div></div><div class="comment-entry"><div class="comment-dot gold">D</div><div class="comment-body"><span class="comment-author">דניאל ס. (מנהל)</span><span class="comment-time">24 אפר׳, 17:00</span><div class="comment-text">בסדר, תתעד את ההתאמה בתוכנית המעודכנת</div></div></div></div><div class="comment-input-row"><textarea class="comment-input" rows="1" placeholder="הוסף תגובה..."></textarea><button class="btn btn-primary btn-xs">שלח</button></div></div>
+        </div>
+
+        <div class="task-item done" onclick="toggleTask(this)">
+          <div class="task-item-row"><div class="task-check done-chk">✓</div><div class="task-text"><div class="name strikethrough">קווי אספקה קומה ב׳</div><div class="sub">Juan M. · 26 אפר׳</div></div><span class="task-expand-icon">▾</span></div>
+          <div class="task-comments"><div class="comment-thread"></div><div class="comment-input-row"><textarea class="comment-input" rows="1" placeholder="הוסף תגובה..."></textarea><button class="btn btn-primary btn-xs">שלח</button></div></div>
+        </div>
+
+        <div class="task-item done" onclick="toggleTask(this)">
+          <div class="task-item-row"><div class="task-check done-chk">✓</div><div class="task-text"><div class="name strikethrough">בדיקת לחץ אספקה</div><div class="sub">Carlos R. · 28 אפר׳</div></div><span class="task-expand-icon">▾</span></div>
+          <div class="task-comments"><div class="comment-thread"><div class="comment-entry"><div class="comment-dot blue">C</div><div class="comment-body"><span class="comment-author">Carlos R.</span><span class="comment-time">28 אפר׳, 14:30</span><div class="comment-text">בדיקת הלחץ עברה בהצלחה — 6 bar, ללא נזילות</div></div></div></div><div class="comment-input-row"><textarea class="comment-input" rows="1" placeholder="הוסף תגובה..."></textarea><button class="btn btn-primary btn-xs">שלח</button></div></div>
+        </div>
+
+        <div class="task-section-label" style="margin-top:12px;">בביצוע / ממתינות</div>
+
+        <div class="task-item active" onclick="toggleTask(this)">
+          <div class="task-item-row"><div class="task-check active-chk"></div><div class="task-text"><div class="name active-name">התקנת שסתומי אמבטיה/מקלחת</div><div class="sub">משויך: Carlos R. · בביצוע</div></div><span class="task-expand-icon">▾</span></div>
+          <div class="task-comments"><div class="comment-thread"><div class="comment-entry"><div class="comment-dot blue">C</div><div class="comment-body"><span class="comment-author">Carlos R.</span><span class="comment-time">היום, 09:42</span><div class="comment-text">שסתום האמבטיה הותקן, ממשיך למקלחת אחר הצהריים</div></div></div><div class="comment-entry"><div class="comment-dot gold">D</div><div class="comment-body"><span class="comment-author">דניאל ס. (מנהל)</span><span class="comment-time">היום, 10:15</span><div class="comment-text">⭐ ראיתי בביקור הבוקר — עבודה מסודרת. ודא שיש גישה לשסתום הניתוק הראשי.</div></div></div></div><div class="comment-input-row"><textarea class="comment-input" rows="1" placeholder="הוסף תגובה..."></textarea><button class="btn btn-primary btn-xs">שלח</button></div></div>
+        </div>
+
+        <div class="task-item pending" onclick="toggleTask(this)">
+          <div class="task-item-row"><div class="task-check pending-chk"></div><div class="task-text"><div class="name">גמר גס — פלנג׳ים של האסלה</div><div class="sub">משויך: Juan M.</div></div><span class="task-expand-icon">▾</span></div>
+          <div class="task-comments"><div class="comment-thread"><div class="comment-entry"><div class="comment-dot purple">J</div><div class="comment-body"><span class="comment-author">Juan M.</span><span class="comment-time">אתמול, 16:15</span><div class="comment-text">הפלנג׳ים מוכנים, ממתין לבטון ביום ראשון</div></div></div></div><div class="comment-input-row"><textarea class="comment-input" rows="1" placeholder="הוסף תגובה..."></textarea><button class="btn btn-primary btn-xs">שלח</button></div></div>
+        </div>
+
+        <div class="task-item pending" onclick="toggleTask(this)">
+          <div class="task-item-row"><div class="task-check pending-chk"></div><div class="task-text"><div class="name">בדיקת אוורור סופית</div><div class="sub">לא משויך</div></div><span class="task-expand-icon">▾</span></div>
+          <div class="task-comments"><div class="comment-thread"></div><div class="comment-input-row"><textarea class="comment-input" rows="1" placeholder="הוסף תגובה..."></textarea><button class="btn btn-primary btn-xs">שלח</button></div></div>
+        </div>
+
+        <div class="task-item pending" onclick="toggleTask(this)">
+          <div class="task-item-row"><div class="task-check pending-chk"></div><div class="task-text"><div class="name">סיור אישור סיום</div><div class="sub">לא משויך</div></div><span class="task-expand-icon">▾</span></div>
+          <div class="task-comments"><div class="comment-thread"></div><div class="comment-input-row"><textarea class="comment-input" rows="1" placeholder="הוסף תגובה..."></textarea><button class="btn btn-primary btn-xs">שלח</button></div></div>
+        </div>
+      </div>
+
+      <!-- עמודה 2: עדכונים -->
+      <div class="feed-panel">
+        <div class="panel-header">
+          <div class="panel-title">📲 &nbsp;עדכוני שטח</div>
+          <div class="panel-sub">עדכוני מנהל + עדכוני עובדים</div>
+        </div>
+
+        <!-- קלט עדכון מנהל -->
+        <div class="admin-input-card">
+          <div class="admin-input-header">
+            <span style="font-size:16px;">📋</span>
+            <span class="label">עדכון מנהל — ביקור אתר</span>
+            <span class="weight-badge">⭐ עדיפות גבוהה</span>
+          </div>
+          <textarea class="admin-textarea" placeholder="תאר את מצב האתר, ממצאים, הנחיות לצוות..."></textarea>
+          <div class="admin-actions">
+            <button class="btn-record" id="recordBtn" onclick="toggleRecord()">🎙 הקלטה קולית</button>
+            <button class="btn btn-gold btn-sm" style="margin-inline-start:auto;">שמור עדכון</button>
+          </div>
+        </div>
+
+        <!-- עדכון מנהל קודם -->
+        <div class="feed-item admin-visit">
+          <div class="feed-item-header">
+            <div class="feed-worker"><div class="worker-dot gold">D</div><span class="worker-name">דניאל ס. — ביקור מנהל</span></div>
+            <span class="feed-time">היום, 08:30</span>
+          </div>
+          <div style="padding:8px 10px;background:#fefce8;font-size:11px;color:#78350f;line-height:1.6;border-bottom:1px solid #fef08a;">⭐ <strong>עדיפות גבוהה:</strong> ביקרתי באתר הבוקר. עבודת הצנרת מסודרת. יש לוודא שיחפור החפיר בקומה 2 יהיה מוכן לפני שישי. הזמנת החומרים לפלנג׳ים צריכה להישלח היום.</div>
+          <div style="padding:0 10px 8px;font-size:9px;color:#b45309;">📋 עדכון מנהל · 21 אפר׳ 2026, 08:30</div>
+        </div>
+
+        <!-- עדכוני עובדים -->
+        <div class="feed-item">
+          <div class="feed-item-header">
+            <div class="feed-worker"><div class="worker-dot blue">C</div><span class="worker-name">Carlos R.</span></div>
+            <span class="feed-time">היום, 09:42</span>
+          </div>
+          <div class="feed-photos two"><div class="feed-photo">🔧</div><div class="feed-photo">📸</div></div>
+          <div class="feed-caption">שסתום האמבטיה הותקן, ממשיכים למקלחת</div>
+          <div class="feed-task-link active">משימה: התקנת שסתומי אמבטיה/מקלחת</div>
+        </div>
+
+        <div class="feed-item">
+          <div class="feed-item-header">
+            <div class="feed-worker"><div class="worker-dot purple">J</div><span class="worker-name">Juan M.</span></div>
+            <span class="feed-time">אתמול, 16:15</span>
+          </div>
+          <div class="feed-photos"><div class="feed-photo" style="height:64px;">📸</div></div>
+          <div class="feed-caption">פלנג׳ים מוקמו, ממתינים לבטון</div>
+          <div class="feed-task-link active">משימה: גמר גס — פלנג׳ים של האסלה</div>
+        </div>
+
+        <div class="feed-item">
+          <div class="feed-item-header">
+            <div class="feed-worker"><div class="worker-dot blue">C</div><span class="worker-name">Carlos R.</span></div>
+            <span class="feed-time">28 אפר׳, 14:30</span>
+          </div>
+          <div class="feed-photos three"><div class="feed-photo">📸</div><div class="feed-photo">📸</div><div class="feed-photo">📸</div></div>
+          <div class="feed-caption">בדיקת לחץ הושלמה — עברה ✅</div>
+          <div class="feed-task-link complete">משימה: בדיקת לחץ אספקה ✓ הושלם</div>
+        </div>
+
+        <div class="feed-view-all">← צפה בכל 16 העדכונים</div>
+      </div>
+
+      <!-- עמודה 3: עלויות -->
+      <div class="cost-col">
+        <div class="cost-card">
+          <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:12px;">💰 פירוט עלויות</div>
+          <div class="cost-row"><span class="lbl">תקציב</span><span class="val">$44,000</span></div>
+          <div class="cost-row"><span class="lbl">הוצא עד כה</span><span class="val" style="color:#c2410c;">$48,200</span></div>
+          <div class="cost-row"><span class="lbl">תחזית סופית</span><span class="val" style="color:#dc2626;">~$52,000</span></div>
+          <div class="cost-bar-wrap">
+            <div class="cost-bar-track"><div class="cost-bar-fill" style="background:#f59e0b;width:91%;"></div><div class="cost-bar-marker"></div></div>
+            <div class="cost-bar-labels"><span>$0</span><span style="color:#dc2626;font-weight:600;">תקציב: $44k</span><span>$52k</span></div>
+          </div>
+          <div class="cost-warning">⚠ בקצב הנוכחי, שלב זה יסתיים ב-<strong>$8,000 מעל התקציב</strong>. מומלץ לבחון עלויות חומרים למשימות שנותרו.</div>
+        </div>
+        <div class="cost-card cross-site-chart">
+          <div class="chart-title">📊 עלויות גמר גס — כל האתרים</div>
+          <div class="chart-row"><span class="row-label">789 Pine</span><div class="chart-track"><div class="chart-fill" style="background:#ef4444;width:100%;"></div></div><span class="chart-pct" style="color:#dc2626;">+22%</span></div>
+          <div class="chart-row"><span class="row-label current">123 Main ▶</span><div class="chart-track"><div class="chart-fill" style="background:#f59e0b;width:73%;"></div></div><span class="chart-pct" style="color:#d97706;">+8%</span></div>
+          <div class="chart-row"><span class="row-label">456 Oak</span><div class="chart-track"><div class="chart-fill" style="background:#f59e0b;width:60%;"></div></div><span class="chart-pct" style="color:#d97706;">+6%</span></div>
+          <div class="chart-row"><span class="row-label">555 Birch</span><div class="chart-track"><div class="chart-fill" style="background:#22c55e;width:40%;"></div></div><span class="chart-pct" style="color:#16a34a;">-2%</span></div>
+          <div class="chart-row"><span class="row-label">99 Maple</span><div class="chart-track"><div class="chart-fill" style="background:#22c55e;width:32%;"></div></div><span class="chart-pct" style="color:#16a34a;">-5%</span></div>
+          <div class="chart-divider"></div>
+          <div class="chart-row"><span class="row-label" style="color:#94a3b8;">ממוצע תיק</span><div class="chart-track"><div class="chart-fill" style="background:#94a3b8;width:65%;"></div></div><span class="chart-pct" style="color:#64748b;">+6%</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     מסך 4 — ניהול חופשות
+══════════════════════════════ -->
+<div id="screen-pto" class="screen">
+  <nav class="navbar">
+    <span class="navbar-logo">ConstructFlow</span>
+    <div class="navbar-center">
+      <button class="nav-tab" onclick="goTo('dashboard')">לוח בקרה</button>
+      <button class="nav-tab active-tab">חופשות 🏖</button>
+    </div>
+    <div class="navbar-right">
+      <div class="avatar">DS</div>
+      <span class="navbar-user">דניאל ס.</span>
+    </div>
+  </nav>
+  <div class="page-content">
+
+    <div class="pto-header">
+      <h2>🏖 &nbsp;ניהול חופשות ועדרויות</h2>
+      <button class="btn btn-primary">+ בקשת חופשה</button>
+    </div>
+
+    <!-- סיכום -->
+    <div class="pto-summary">
+      <div class="pto-summary-card"><div class="ps-num" style="color:#2563eb;">5</div><div class="ps-lbl">עובדים פעילים</div></div>
+      <div class="pto-summary-card"><div class="ps-num" style="color:#f59e0b;">2</div><div class="ps-lbl">בקשות ממתינות</div></div>
+      <div class="pto-summary-card"><div class="ps-num" style="color:#16a34a;">1</div><div class="ps-lbl">בחופשה השבוע</div></div>
+      <div class="pto-summary-card"><div class="ps-num" style="color:#94a3b8;">12</div><div class="ps-lbl">ימי חופשה ממוצע</div></div>
+    </div>
+
+    <div class="pto-grid">
+
+      <!-- יתרות חופשה -->
+      <div>
+        <div class="pto-section-title">יתרות חופשה לעובדים</div>
+        <div class="emp-list">
+
+          <div class="emp-card">
+            <div class="emp-avatar" style="background:#2563eb;">C</div>
+            <div class="emp-info"><div class="emp-name">Carlos R.</div><div class="emp-role">אינסטלטור ראשי</div></div>
+            <div class="emp-pto"><div class="days" style="color:#16a34a;">14</div><div class="days-lbl">ימים נותרים</div></div>
+            <div class="emp-pto-bar"><div class="pto-track"><div class="pto-fill" style="background:#22c55e;width:70%;"></div></div><div class="pto-fraction">14 / 20</div></div>
+          </div>
+
+          <div class="emp-card">
+            <div class="emp-avatar" style="background:#7c3aed;">J</div>
+            <div class="emp-info"><div class="emp-name">Juan M.</div><div class="emp-role">אינסטלטור</div></div>
+            <div class="emp-pto"><div class="days" style="color:#f59e0b;">6</div><div class="days-lbl">ימים נותרים</div></div>
+            <div class="emp-pto-bar"><div class="pto-track"><div class="pto-fill" style="background:#f59e0b;width:30%;"></div></div><div class="pto-fraction">6 / 20</div></div>
+          </div>
+
+          <div class="emp-card" style="border-color:#fecaca;">
+            <div class="emp-avatar" style="background:#dc2626;">R</div>
+            <div class="emp-info"><div class="emp-name">Rami K.</div><div class="emp-role">עוזר אינסטלטור</div></div>
+            <div class="emp-pto"><div class="days" style="color:#dc2626;">0</div><div class="days-lbl">ימים נותרים</div></div>
+            <div class="emp-pto-bar"><div class="pto-track"><div class="pto-fill" style="background:#ef4444;width:0%;"></div></div><div class="pto-fraction" style="color:#dc2626;">0 / 20 — נגמר!</div></div>
+          </div>
+
+          <div class="emp-card" style="background:#f0fdf4;border-color:#bbf7d0;">
+            <div class="emp-avatar" style="background:#16a34a;">A</div>
+            <div class="emp-info"><div class="emp-name">Avi S.</div><div class="emp-role">מפקח</div><div style="font-size:9px;color:#16a34a;margin-top:2px;">🏖 בחופשה — 21-25 אפר׳</div></div>
+            <div class="emp-pto"><div class="days" style="color:#16a34a;">9</div><div class="days-lbl">ימים נותרים</div></div>
+            <div class="emp-pto-bar"><div class="pto-track"><div class="pto-fill" style="background:#22c55e;width:45%;"></div></div><div class="pto-fraction">9 / 20</div></div>
+          </div>
+
+          <div class="emp-card">
+            <div class="emp-avatar" style="background:#0891b2;">M</div>
+            <div class="emp-info"><div class="emp-name">Mike T.</div><div class="emp-role">מנהל שטח</div></div>
+            <div class="emp-pto"><div class="days" style="color:#16a34a;">18</div><div class="days-lbl">ימים נותרים</div></div>
+            <div class="emp-pto-bar"><div class="pto-track"><div class="pto-fill" style="background:#22c55e;width:90%;"></div></div><div class="pto-fraction">18 / 20</div></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- בקשות -->
+      <div>
+        <div class="pto-section-title">בקשות ממתינות לאישור</div>
+        <div class="requests-list">
+
+          <div class="request-card">
+            <div class="request-top">
+              <div style="display:flex;align-items:center;gap:8px;"><div class="worker-dot purple" style="width:24px;height:24px;font-size:10px;">J</div><span class="request-name">Juan M.</span></div>
+              <span class="badge badge-orange">ממתין לאישור</span>
+            </div>
+            <div class="request-dates">28 אפר׳ — 2 מאי 2026 &nbsp;(3 ימים)</div>
+            <div class="request-reason">סיבה: חתונה משפחתית</div>
+            <div class="request-actions">
+              <button class="btn btn-primary btn-sm">✓ אשר</button>
+              <button class="btn btn-ghost btn-sm" style="color:#dc2626;border-color:#fecaca;">✕ דחה</button>
+            </div>
+          </div>
+
+          <div class="request-card">
+            <div class="request-top">
+              <div style="display:flex;align-items:center;gap:8px;"><div class="worker-dot blue" style="width:24px;height:24px;font-size:10px;">C</div><span class="request-name">Carlos R.</span></div>
+              <span class="badge badge-orange">ממתין לאישור</span>
+            </div>
+            <div class="request-dates">15 מאי — 16 מאי 2026 &nbsp;(2 ימים)</div>
+            <div class="request-reason">סיבה: ענייני בריאות</div>
+            <div class="request-actions">
+              <button class="btn btn-primary btn-sm">✓ אשר</button>
+              <button class="btn btn-ghost btn-sm" style="color:#dc2626;border-color:#fecaca;">✕ דחה</button>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="pto-section-title" style="margin-top:20px;">היסטוריית חופשות מאושרות</div>
+        <div class="requests-list">
+          <div class="request-card" style="opacity:.8;">
+            <div class="request-top"><div style="display:flex;align-items:center;gap:8px;"><div class="worker-dot" style="width:24px;height:24px;font-size:10px;background:#16a34a;">A</div><span class="request-name">Avi S.</span></div><span class="badge badge-green">מאושר</span></div>
+            <div class="request-dates">21 אפר׳ — 25 אפר׳ 2026 &nbsp;(5 ימים)</div>
+            <div class="request-reason">סיבה: חופשה משפחתית</div>
+          </div>
+          <div class="request-card" style="opacity:.8;">
+            <div class="request-top"><div style="display:flex;align-items:center;gap:8px;"><div class="worker-dot blue" style="width:24px;height:24px;font-size:10px;">C</div><span class="request-name">Carlos R.</span></div><span class="badge badge-green">מאושר</span></div>
+            <div class="request-dates">1 אפר׳ — 3 אפר׳ 2026 &nbsp;(3 ימים)</div>
+            <div class="request-reason">סיבה: חג הפסח</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function goTo(screen, site, status) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active-tab'));
+
+  if (screen === 'dashboard') {
+    document.getElementById('screen-dashboard').classList.add('active');
+  } else if (screen === 'initiative') {
+    const name = site || '123 Main St';
+    document.getElementById('init-breadcrumb').textContent = name;
+    document.getElementById('init-title').textContent = name;
+    document.getElementById('epic-init-crumb').textContent = name;
+    if (status === 'over' || status === 'stalled') {
+      document.getElementById('init-pct').textContent = status === 'over' ? '88%' : '45%';
+      document.getElementById('init-budget').textContent = 'חריגת תקציב';
+      document.getElementById('init-budget').style.color = '#c2410c';
+    } else {
+      document.getElementById('init-pct').textContent = '70%';
+      document.getElementById('init-budget').textContent = 'בתקציב';
+      document.getElementById('init-budget').style.color = '#16a34a';
+    }
+    document.getElementById('screen-initiative').classList.add('active');
+  } else if (screen === 'epic') {
+    document.getElementById('screen-epic').classList.add('active');
+  } else if (screen === 'pto') {
+    document.getElementById('screen-pto').classList.add('active');
+  }
+  window.scrollTo(0, 0);
+}
+
+function toggleTask(item) {
+  // Don't toggle when clicking on textarea or button
+  if (event.target.tagName === 'TEXTAREA' || event.target.tagName === 'BUTTON') return;
+  item.classList.toggle('expanded');
+}
+
+function setKbTab(btn, type) {
+  document.querySelectorAll('.kb-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.kb-file').forEach(f => {
+    f.style.display = (type === 'all' || f.dataset.type === type) ? 'flex' : 'none';
+  });
+}
+
+let recording = false;
+function toggleRecord() {
+  recording = !recording;
+  const btn = document.getElementById('recordBtn');
+  btn.classList.toggle('recording', recording);
+  btn.textContent = recording ? '⏹ עצור הקלטה' : '🎙 הקלטה קולית';
+}
+</script>
+</body>
+</html>
